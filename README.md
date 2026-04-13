@@ -492,3 +492,147 @@ Decrypt flag:
 
 
 flag: `vcstraining{Running_in_VM_is_ridiculous}`
+
+
+## AntiDebug1
+
+<img width="462" height="226" alt="image" src="https://github.com/user-attachments/assets/d599a144-5744-4716-9e99-d7b6e97945bd" />
+
+mở IDA:
+
+<img width="1337" height="492" alt="image" src="https://github.com/user-attachments/assets/e6317c00-e922-4464-88e1-6ae0ad7f7c66" />
+
+Ta thấy antidebug đầu tiên là `SetUnhandledExceptionFilter`, hàm này đăng ký 1 hàm handler, khi exception trigger thì luồng chương trình sẽ nhảy vào hàm handler.
+
+Hàm được đăng ký là `TopLevelExceptionFilter`:
+
+<img width="906" height="503" alt="image" src="https://github.com/user-attachments/assets/df83af5d-3ced-4b67-a2e6-fe5cde6a024f" />
+
+
+<img width="1913" height="978" alt="image" src="https://github.com/user-attachments/assets/80fd0823-1b41-4c94-b573-d642adcf696c" />
+
+<img width="1346" height="527" alt="image" src="https://github.com/user-attachments/assets/8dd11df3-2874-4d5c-8726-f57526288269" />
+
+Ta thấy exception trigger tại `div eax`, `SetUnhandledExceptionFilter` khác với `AddVectoredExceptionHandler`, nếu dùng debugger và chọn `pass to application` thì sẽ crash chứ không tự nhảy vào hàm đã đăng ký như `AddVectoredExceptionHandler`:
+
+<img width="1085" height="187" alt="image" src="https://github.com/user-attachments/assets/131233ae-661a-4a39-9a4c-e9d85a3969a2" />
+
+Buộc ta phải patch để trực tiếp nhảy vào hàm `TopLevelExceptionFilter` để có thể tiếp tục debug:
+
+<img width="715" height="497" alt="image" src="https://github.com/user-attachments/assets/212969d5-8a63-4940-b51d-35f2091b3738" />
+
+Sau khi patch thì chương trình vẫn hoạt động bình thường:
+
+<img width="611" height="242" alt="image" src="https://github.com/user-attachments/assets/92c19bfb-8522-4ac0-a63f-613751e53102" />
+
+<img width="862" height="265" alt="image" src="https://github.com/user-attachments/assets/a7433123-2623-4429-89c7-359b23b0623e" />
+
+Tiếp tục ta gặp các antidebug là: `IsDebuggerPresent`, `NtGlobalFlag`, `ProcessHeap`:
+
+<img width="1356" height="545" alt="image" src="https://github.com/user-attachments/assets/b832ce42-5e8e-40e3-b839-91c430e004b7" />
+
+Ngoài ra còn có antidebug ở `sub_401757` để chống patch/breakpoint:
+
+<img width="667" height="442" alt="image" src="https://github.com/user-attachments/assets/756f0ae0-f10d-4cb9-a497-7becb8f2f878" />
+
+Ta nop `call sub_401757` và các `jnz` đi để luồng giống với khi không bị debug:
+
+<img width="377" height="642" alt="image" src="https://github.com/user-attachments/assets/68aab295-6c72-4033-b924-d8840e63aff8" />
+
+<img width="472" height="212" alt="image" src="https://github.com/user-attachments/assets/b6be6e3a-e2d6-4098-ba0b-dae56759ddec" />
+
+Tuy nhiên khi ta nhập gì đó vào dialogbox thì chương trình sẽ bị out, ta có thể thấy rằng còn có antidebug ở event nhập input.
+
+Tiếp tục debug:
+
+<img width="1316" height="467" alt="image" src="https://github.com/user-attachments/assets/4586184d-0271-464d-b34c-b0377f9d3ad8" />
+
+Ta thấy chương trình lấy `ProcessDebugPort` bằng `NtQueryInformationProcess`, sau đó thì sử dụng nó để tính toán `v7`, cuối cùng là selfpatch thành nop 0x18 bytes từ `0x40122D`
+
+Ta sẽ patch `v8` sao cho nó luôn = `0x4f`:
+
+<img width="1016" height="242" alt="image" src="https://github.com/user-attachments/assets/33bcfdac-4d48-481e-9b7e-13329650fec6" />
+
+Ta xem tiếp:
+
+<img width="686" height="146" alt="image" src="https://github.com/user-attachments/assets/1f320df4-efc8-43ab-9546-b971b0731c60" />
+
+<img width="685" height="153" alt="image" src="https://github.com/user-attachments/assets/954675c1-3c26-4bf7-b61c-76cb7eb1b21d" />
+
+<img width="792" height="118" alt="image" src="https://github.com/user-attachments/assets/64940ba5-b620-403b-a734-6d34d00e112b" />
+
+<img width="1117" height="470" alt="image" src="https://github.com/user-attachments/assets/dbef381e-4a71-4b4a-a933-f2b5288f0f26" />
+
+Ta thấy antidebug `GetTickCount` tuy nhiên ta tạm thời bỏ qua để đi vào xem hàm `sub_401525` trước:
+
+<img width="1227" height="460" alt="image" src="https://github.com/user-attachments/assets/ef43e9bc-64c4-4607-994a-1434853e6d12" />
+
+Chương trình ẩn thread bằng `NtSetInformationThread`, ta sẽ nop nó đi để có thể tiếp tục debug:
+
+<img width="1487" height="622" alt="image" src="https://github.com/user-attachments/assets/28418744-d310-4710-ac88-e8bde78b93f5" />
+
+ngoài ra còn có hàm chống software breakpoint:
+
+<img width="678" height="348" alt="image" src="https://github.com/user-attachments/assets/74ced122-63f0-4f89-a041-864152765a2f" />
+
+debug tiếp ta thấy:
+
+<img width="1138" height="401" alt="image" src="https://github.com/user-attachments/assets/f2a2a823-1b34-431f-9c20-2a3d02d7f3a9" />
+
+ta sẽ nop phần này đi:
+
+<img width="490" height="486" alt="image" src="https://github.com/user-attachments/assets/b64997e0-9cf6-4fee-b82a-5bf79192ee98" />
+
+tiếp tục:
+
+<img width="1070" height="493" alt="image" src="https://github.com/user-attachments/assets/33a8b9a6-c375-487f-a1c4-e48f728841a3" />
+
+<img width="1327" height="487" alt="image" src="https://github.com/user-attachments/assets/6e9d7fd4-2fa8-4559-8ae5-3f1b49020fe0" />
+
+<img width="426" height="41" alt="image" src="https://github.com/user-attachments/assets/cf5a9ca1-d83f-4786-be4a-ebe9ceb884b0" />
+
+Chương trình lấy snapshot các process và tìm process có tên `csrss.exe`.
+
+tiếp tục:
+
+<img width="617" height="201" alt="image" src="https://github.com/user-attachments/assets/50ce5409-2970-4c95-884f-7fa9805442f7" />
+
+<img width="787" height="465" alt="image" src="https://github.com/user-attachments/assets/cdc40683-d5c2-4b6a-83c4-f56d29e09210" />
+
+<img width="1277" height="507" alt="image" src="https://github.com/user-attachments/assets/0156c035-d50d-4dfb-9064-2619bfaf3e08" />
+
+Chương trình lấy path của chính nó và tìm xem có process nào khác chứa tên nó không
+
+Tiếp tục vẫn là tìm các process để kiểm tra debugger:
+
+<img width="582" height="92" alt="image" src="https://github.com/user-attachments/assets/9e66f198-8a1a-4f8b-978a-f67a29ea82f7" />
+
+Tiếp tục debug ta thấy antidebug dùng `GetTickCount`:
+
+<img width="867" height="446" alt="image" src="https://github.com/user-attachments/assets/9b269c50-5839-48bd-a46e-c8452fb15af3" />
+
+Ta chỉ cần sửa `jbe` thành `jmp` để đi vào luồng đúng.
+
+debug tiếp:
+
+<img width="1272" height="318" alt="image" src="https://github.com/user-attachments/assets/4ce3649f-94a7-4336-8ccc-e35297be9fef" />
+
+<img width="1207" height="358" alt="image" src="https://github.com/user-attachments/assets/1753f09d-d368-419a-96b8-d0603dad902a" />
+
+Đây chính là chỗ kiểm tra input ta nhập vào và password đích.
+
+Vậy ta đã có password đầy đủ là:
+
+`NtQu3ry1nf0rm@t10nPr0(355R@!s33xc3pt!onD3bugPr1v1l3g3St@ckT1m3CCS3lf-P3BF1ndW1nd0wH1d1ng@nt1-R3v3rs3`
+
+Nhập vào DialogBox:
+
+<img width="458" height="203" alt="image" src="https://github.com/user-attachments/assets/3970a47c-38d9-41bf-86aa-6607113325d9" />
+
+flag: `NtQu3ry1nf0rm@t10nPr0(355R@!s33xc3pt!onD3bugPr1v1l3g3St@ckT1m3CCS3lf-P3BF1ndW1nd0wH1d1ng@nt1-R3v3rs3`
+
+
+
+
+
+

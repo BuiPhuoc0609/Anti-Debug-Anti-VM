@@ -632,6 +632,148 @@ Nhập vào DialogBox:
 flag: `NtQu3ry1nf0rm@t10nPr0(355R@!s33xc3pt!onD3bugPr1v1l3g3St@ckT1m3CCS3lf-P3BF1ndW1nd0wH1d1ng@nt1-R3v3rs3`
 
 
+## Simple Anti Debug
+
+<img width="584" height="281" alt="image" src="https://github.com/user-attachments/assets/3c0944a2-23ea-496f-bba3-5111c32e7e40" />
+
+<img width="1416" height="714" alt="image" src="https://github.com/user-attachments/assets/ec7608b0-a3e9-4dfb-a6c1-ca6be331d728" />
+
+Ta phát hiện `TlsCallback`:
+
+<img width="1343" height="466" alt="image" src="https://github.com/user-attachments/assets/067e2f18-312b-4536-8283-c88e6e6a104a" />
+
+chương trình sử dụng kỹ thuật API hashing để resolve api 
+
+ta đặt có thể debug để xem chương trình gọi API gì:
+
+<img width="663" height="51" alt="image" src="https://github.com/user-attachments/assets/ef1f0858-565d-4961-bfe2-1a19651aec1d" />
+
+chương trình lấy `ProcessDebugPort` để antidebug
+
+Ta sẽ patch `v6 = 0` để chương trình vào luồng đúng:
+
+<img width="520" height="533" alt="image" src="https://github.com/user-attachments/assets/1d1db6c7-2d94-45c2-b4ec-cd9e597c5e17" />
+
+<img width="617" height="182" alt="image" src="https://github.com/user-attachments/assets/74173496-2172-48f4-a8d2-d0f516107814" />
+
+
+
+
+Event nhận input:
+
+<img width="1290" height="616" alt="image" src="https://github.com/user-attachments/assets/c50041af-8b06-4b00-8cca-d1b41e61bcea" />
+
+Check input:
+
+<img width="1339" height="588" alt="image" src="https://github.com/user-attachments/assets/81dffa3f-a5ac-4772-b19b-ef80f95d63c2" />
+
+Chương trình yêu cầu input phải dài `0x26` ký tự
+
+Ta đi phân tích từng case antidebug:
+
+case 6:
+
+<img width="731" height="91" alt="image" src="https://github.com/user-attachments/assets/29500728-192e-47da-9e05-23c6f0e60be9" />
+
+<img width="1341" height="588" alt="image" src="https://github.com/user-attachments/assets/fda0b1be-89f7-466f-9ccb-1d6ac6584152" />
+
+
+<img width="886" height="85" alt="image" src="https://github.com/user-attachments/assets/3c58f245-cb7a-47e2-b794-822d2a449514" />
+
+Chương trình gọi `NtUserBlockInput` 2 lần, trong điều kiện bình thường, chương trình sẽ chỉ block input 1 lần, lần sau sẽ bị trả về false
+
+Patch để luôn vào label 3:
+
+<img width="633" height="235" alt="image" src="https://github.com/user-attachments/assets/49ce5a20-0c45-4c9b-99ed-182d7aae3310" />
+
+<img width="837" height="353" alt="image" src="https://github.com/user-attachments/assets/b446991e-4b72-46d2-85f5-0f9fa79dbe91" />
+
+
+case 1:
+
+<img width="1315" height="198" alt="image" src="https://github.com/user-attachments/assets/2b1bfb9e-a0e9-48c8-8f68-b177e1b29bff" />
+
+<img width="1317" height="576" alt="image" src="https://github.com/user-attachments/assets/616ea293-5dfc-4b57-9aa8-a8120f8e17dc" />
+
+Chương trình antidebug bằng `NtGlobalFlag`, khi process được khởi tạo bằng debugger thì dẫn đến `NtGlobalFlag == 0x70` còn khi bình thường hoặc kể cả khi debugger attach vào thì giá trị này luôn bằng 0
+
+Vậy ta sẽ phải patch để `n112` luôn bằng 0:
+
+<img width="908" height="268" alt="image" src="https://github.com/user-attachments/assets/337084c7-7f38-4c2c-aef3-98dbbd187287" />
+
+<img width="651" height="193" alt="image" src="https://github.com/user-attachments/assets/e5232920-b44e-408a-898a-27c31b698fa8" />
+
+case 7: 
+
+<img width="1320" height="380" alt="image" src="https://github.com/user-attachments/assets/af6c849d-93bf-468d-8945-eae4e62d6cee" />
+
+<img width="707" height="67" alt="image" src="https://github.com/user-attachments/assets/b676a163-70fe-46ec-a85d-17a5fa0b3416" />
+
+case này antidebug bằng `ProcessDebugFlags`
+
+patch:
+
+<img width="622" height="468" alt="image" src="https://github.com/user-attachments/assets/00b4a482-1fdc-4a30-aa66-fcff5aad1535" />
+
+<img width="846" height="256" alt="image" src="https://github.com/user-attachments/assets/44fff46c-fca5-4993-a876-ddc68e97f75f" />
+
+case 3:
+
+<img width="907" height="52" alt="image" src="https://github.com/user-attachments/assets/2d4d94e0-be22-47cf-b3d9-59478bacd582" />
+
+<img width="1160" height="391" alt="image" src="https://github.com/user-attachments/assets/57ec90b2-ed04-4e62-ac52-ef317a8c1e7e" />
+
+patch:
+
+<img width="1097" height="418" alt="image" src="https://github.com/user-attachments/assets/42e07ff9-ece3-492d-b6f0-4fe19e1bab28" />
+
+<img width="822" height="210" alt="image" src="https://github.com/user-attachments/assets/60a5c135-619a-4709-8039-bb4c2a4a5ce9" />
+
+
+case 2:
+
+<img width="720" height="62" alt="image" src="https://github.com/user-attachments/assets/69176c31-e746-4d25-9d5b-6b36f24fcaab" />
+
+<img width="1291" height="487" alt="image" src="https://github.com/user-attachments/assets/220ca2dd-764b-4e45-9db1-34d3cf22eede" />
+
+tương tự như case 3 và tắt block input
+
+patch:
+
+<img width="645" height="427" alt="image" src="https://github.com/user-attachments/assets/a39ab056-7a12-45be-99ee-f5d3364183b6" />
+
+
+case 4:
+
+<img width="676" height="56" alt="image" src="https://github.com/user-attachments/assets/a3211d8f-f4b4-44eb-a3f8-ac79a65e08c9" />
+
+<img width="1315" height="572" alt="image" src="https://github.com/user-attachments/assets/880ab9a1-2782-4afb-be35-1f64f13535e1" />
+
+cơ chế antidebug: nếu HEAP_TAIL_CHECKING_ENABLED flag được bật thì 0xABABABAB sẽ được thêm vào cuối khối heap đã cấp phát
+
+<img width="1918" height="587" alt="image" src="https://github.com/user-attachments/assets/1ff98f3f-2376-42b9-a36f-74cdcbd89366" />
+
+patch:
+
+<img width="788" height="560" alt="image" src="https://github.com/user-attachments/assets/55d035a0-3be3-46d7-a1db-8252a3e5da51" />
+
+<img width="1027" height="442" alt="image" src="https://github.com/user-attachments/assets/c1af5fda-839c-4d2d-bb71-fd657e74db6d" />
+
+case 5:
+
+<img width="755" height="56" alt="image" src="https://github.com/user-attachments/assets/48e8dd0f-0cb3-45d4-8622-8c5c0c8acf41" />
+
+<img width="1320" height="571" alt="image" src="https://github.com/user-attachments/assets/9c5040d8-b53d-444a-b288-8e4032789041" />
+
+đã bypass hết các antidebug, ta chỉ cần nhặt các flag theo thứ tự là được.
+
+I_10v3-y0U__wh3n Y0u=c411..M3 Senor1t4
+
+<img width="1402" height="712" alt="image" src="https://github.com/user-attachments/assets/88cd56bd-0f9b-4c4c-9e7b-912f415c61f5" />
+
+flag: `vcstraining{Th3_U1tiM4t3_ant1_D3Bu9_ref3r3ncE}`
+
+
 
 
 
